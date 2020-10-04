@@ -1,24 +1,17 @@
 using System;
 using System.ComponentModel;
 using Android.Content;
-using Android.Graphics;
-#if __ANDROID_29__
-using AndroidX.AppCompat.Widget;
-using AndroidX.RecyclerView.Widget;
-using AViewCompat = AndroidX.Core.View.ViewCompat;
-#else
-using Android.Support.V7.Widget;
-using AViewCompat = Android.Support.V4.View.ViewCompat;
-#endif
 using Android.Views;
+using AndroidX.RecyclerView.Widget;
 using Xamarin.Forms.Internals;
 using Xamarin.Forms.Platform.Android.CollectionView;
 using Xamarin.Forms.Platform.Android.FastRenderers;
 using ARect = Android.Graphics.Rect;
+using AViewCompat = AndroidX.Core.View.ViewCompat;
 
 namespace Xamarin.Forms.Platform.Android
 {
-	public abstract class ItemsViewRenderer<TItemsView, TAdapter, TItemsViewSource> : RecyclerView, IVisualElementRenderer, IEffectControlProvider 
+	public abstract class ItemsViewRenderer<TItemsView, TAdapter, TItemsViewSource> : RecyclerView, IVisualElementRenderer, IEffectControlProvider
 		where TItemsView : ItemsView
 		where TAdapter : ItemsViewAdapter<TItemsView, TItemsViewSource>
 		where TItemsViewSource : IItemsViewSource
@@ -48,7 +41,7 @@ namespace Xamarin.Forms.Platform.Android
 		RecyclerView.ItemDecoration _itemDecoration;
 
 		public ItemsViewRenderer(Context context) : base(
-			new ContextThemeWrapper(context, Resource.Style.collectionViewTheme), null, 
+			new ContextThemeWrapper(context, Resource.Style.collectionViewTheme), null,
 			Resource.Attribute.collectionViewStyle)
 		{
 			_automationPropertiesProvider = new AutomationPropertiesProvider(this);
@@ -61,7 +54,7 @@ namespace Xamarin.Forms.Platform.Android
 			HorizontalScrollBarEnabled = false;
 		}
 
-		ScrollHelper ScrollHelper => _scrollHelper = _scrollHelper ?? new ScrollHelper(this);
+		internal ScrollHelper ScrollHelper => _scrollHelper = _scrollHelper ?? new ScrollHelper(this);
 
 		protected override void OnLayout(bool changed, int l, int t, int r, int b)
 		{
@@ -227,6 +220,10 @@ namespace Xamarin.Forms.Platform.Android
 			{
 				UpdateBackgroundColor();
 			}
+			else if (changedProperty.Is(VisualElement.BackgroundProperty))
+			{
+				UpdateBackground();
+			}
 			else if (changedProperty.Is(VisualElement.FlowDirectionProperty))
 			{
 				UpdateFlowDirection();
@@ -286,9 +283,9 @@ namespace Xamarin.Forms.Platform.Android
 			{
 				_emptyCollectionObserver.Stop(oldItemViewAdapter);
 				_itemsUpdateScrollObserver.Stop(oldItemViewAdapter);
-	
+
 				SetAdapter(null);
-	
+
 				SwapAdapter(ItemsViewAdapter, true);
 			}
 
@@ -322,6 +319,7 @@ namespace Xamarin.Forms.Platform.Android
 
 			UpdateSnapBehavior();
 			UpdateBackgroundColor();
+			UpdateBackground();
 			UpdateFlowDirection();
 			UpdateItemSpacing();
 
@@ -467,6 +465,19 @@ namespace Xamarin.Forms.Platform.Android
 			SetBackgroundColor((color ?? Element.BackgroundColor).ToAndroid());
 		}
 
+		protected virtual void UpdateBackground(Brush brush = null)
+		{
+			if (Element == null)
+				return;
+
+			if (!(this is RecyclerView recyclerView))
+				return;
+
+			Brush background = Element.Background;
+
+			recyclerView.UpdateBackground(background);
+		}
+
 		protected virtual void UpdateFlowDirection()
 		{
 			if (Element == null)
@@ -591,6 +602,9 @@ namespace Xamarin.Forms.Platform.Android
 
 		protected virtual void ScrollTo(ScrollToRequestEventArgs args)
 		{
+			if (ItemsView == null)
+				return;
+
 			var position = DetermineTargetPosition(args);
 
 			if (args.IsAnimated)
@@ -620,14 +634,14 @@ namespace Xamarin.Forms.Platform.Android
 			}
 
 			int itemCount = 0;
-			if(ItemsView is StructuredItemsView itemsView)
+			if (ItemsView is StructuredItemsView itemsView)
 			{
 				if (itemsView.Header != null || itemsView.HeaderTemplate != null)
 					itemCount++;
 				if (itemsView.Footer != null || itemsView.FooterTemplate != null)
 					itemCount++;
 			}
-   
+
 			var showEmptyView = ItemsView?.EmptyView != null && ItemsViewAdapter.ItemCount == itemCount;
 
 			var currentAdapter = GetAdapter();
@@ -649,7 +663,7 @@ namespace Xamarin.Forms.Platform.Android
 		{
 			if (ItemsView.ItemsUpdatingScrollMode == ItemsUpdatingScrollMode.KeepLastItemInView)
 			{
-				ScrollTo(new ScrollToRequestEventArgs(ItemsViewAdapter.ItemCount, 0,
+				ScrollTo(new ScrollToRequestEventArgs(GetLayoutManager().ItemCount, 0,
 					Xamarin.Forms.ScrollToPosition.MakeVisible, true));
 			}
 			else if (ItemsView.ItemsUpdatingScrollMode == ItemsUpdatingScrollMode.KeepScrollOffset)
